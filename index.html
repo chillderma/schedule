@@ -16,7 +16,7 @@
 :root{
   --bg:#F4F6F8; --surface:#FFFFFF; --ink:#1C2430; --muted:#66707E; --line:#E1E5EA;
   --accent:#2F5D62; --accent-soft:#E3EEEE; --course:#6E58A0; --course-soft:#EEEAF6;
-  --off:#8A929C; --off-soft:#EEF0F2; --warn:#B4552D; --alert:#A3243B; --alert-soft:#FCE9ED; --line-green:#06A44C;
+  --off:#8A929C; --off-soft:#EEF0F2; --warn:#B4552D; --alert:#A3243B; --alert-soft:#FCE9ED; --gray-ink:#6B7480; --line-green:#06A44C;
   --f-display:"Noto Serif TC","Songti TC",serif;
   --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
   --r:10px;
@@ -24,11 +24,11 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#12171C; --surface:#1A2128; --ink:#E7ECF0; --muted:#98A2AE; --line:#2B343D;
   --accent:#7DB5B9; --accent-soft:#1F3234; --course:#B4A2E0; --course-soft:#2A2440;
-  --off:#7D8792; --off-soft:#222A31; --warn:#E39A78; --alert:#F2A3B1; --alert-soft:#3A1E26; color-scheme:dark}}
+  --off:#7D8792; --off-soft:#222A31; --warn:#E39A78; --alert:#F2A3B1; --alert-soft:#3A1E26; --gray-ink:#A6AFBA; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#12171C; --surface:#1A2128; --ink:#E7ECF0; --muted:#98A2AE; --line:#2B343D;
   --accent:#7DB5B9; --accent-soft:#1F3234; --course:#B4A2E0; --course-soft:#2A2440;
-  --off:#7D8792; --off-soft:#222A31; --warn:#E39A78; --alert:#F2A3B1; --alert-soft:#3A1E26; color-scheme:dark}
+  --off:#7D8792; --off-soft:#222A31; --warn:#E39A78; --alert:#F2A3B1; --alert-soft:#3A1E26; --gray-ink:#A6AFBA; color-scheme:dark}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6}
 .wrap{max-width:1080px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 56px;display:flex;flex-direction:column;gap:20px}
 button,select,input{font:inherit;color:inherit}
@@ -133,6 +133,9 @@ button{cursor:pointer}
 .wk.xw td:first-child{width:auto;white-space:nowrap;padding-right:10px}
 .xt2{display:flex;gap:6px;min-width:0}
 .xt2 select,.xt2 input{flex:1;min-width:0;border:1px solid var(--line);border-radius:6px;padding:7px 9px;background:var(--surface);color:var(--ink)}
+.banner.gray{background:var(--off-soft);color:var(--gray-ink)}
+.tag.course{background:var(--off-soft);color:var(--gray-ink)}
+.md .st.course{background:var(--off-soft);color:var(--gray-ink)}
 .editbtn{border:1px solid var(--accent);color:var(--accent);background:var(--surface);border-radius:999px;padding:6px 14px;font-size:14px}
 /* editor */
 .ed{position:fixed;inset:0;background:var(--bg);overflow:auto;z-index:20;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -214,6 +217,7 @@ const rangesOf=c=>(c.ranges&&c.ranges.length?c.ranges:(c.range?[c.range]:[])).fi
 const timeOf=(c,s,x)=>(x&&x.tm)||(s==='full'?(rangesOf(c)[0]||''):(c.hours?.[s]||''));
 function sessionsOf(st,x){const c=clinicOf(st,x.c);return x.s==='full'?sessOfRange(parseRange(c?timeOf(c,'full',x):'')):[x.s]}
 function sessLabel(st,x){if(x.s!=='full')return SL[x.s];const ss=sessionsOf(st,x);return ss.length>1?`${SL[ss[0]]}～${SL[ss[ss.length-1]]}`:SL[ss[0]]}
+function igTime(t){const r=parseRange(t);if(!r)return'';const f=m=>{const h=m/60;return Number.isInteger(h)?String(h):String(Math.round(h*100)/100)};return `${f(r[0])}–${f(r[1])}`}
 function shortTime(t){const r=parseRange(t);if(!r)return'';const f=m=>m%60?`${Math.floor(m/60)}:${pad(m%60)}`:`${m/60}`;return `${f(r[0])}–${f(r[1])}`}
 function startMin(st,x){if(x.s==='full'){const c=clinicOf(st,x.c);const r=parseRange(c?timeOf(c,'full',x):'');return r?r[0]:780}const r=parseRange(clinicOf(st,x.c)?.hours?.[x.s]);return r?r[0]:SB[x.s][0]+540}
 const typeOf=(c,v)=>c.kind==='aes'||c.kind==='nhi'?c.kind:(v.t==='nhi'?'nhi':'aes');
@@ -281,9 +285,12 @@ function render(){
   <div class="hdr">${st.avatar?`<img class="avatar" src="${esc(st.avatar)}" alt="${esc(st.doctor)}">`:''}<a class="linebtn" id="lineBtn" href="${esc(st.lineUrl||'#')}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3C6.5 3 2 6.6 2 11c0 3.9 3.5 7.2 8.3 7.9l-.6 2.6c-.1.4.3.7.7.5L15 19c4.1-1.1 7-4.3 7-8 0-4.4-4.5-8-10-8z" fill="currentColor"/></svg><b>${esc(st.lineLabel||'直接找李醫師預約')}</b></a></div></header>`;
   if(st.sample) h+=`<div class="banner sample">目前是範例資料${canEdit&&!custView?'，請按下方「編輯門診表」改成實際診所與時段。':'。'}</div>`;
   if(mk.length>1) h+=`<div class="mseg" role="tablist" aria-label="月份">${mk.map(k=>`<button class="mbtn" data-m="${k}" aria-pressed="${k===ym}"><b>${+k.slice(5)} 月門診</b><small>${k===curYM?'本月':k>curYM&&mk.includes(curYM)?'新公布':''}</small></button>`).join('')}</div>`;
-  if(specials.length) h+=`<div class="banner">${specials.map(([d,i,ds])=>{const md=`${+ym.slice(5)}/${d}（${WDL[wdOf(ds)]}）`;
+  const spLine=([d,i,ds])=>{const md=`${+ym.slice(5)}/${d}（${WDL[wdOf(ds)]}）`;
     if(i.special==='custom')return `<div><b>${md}門診調整</b>　${diffHTML(st,dayDiff(st,ym,ds,i).items)}${i.note?`　${esc(i.note)}`:''}</div>`;
-    return `<div><b>${md}${spName(i.special)}</b>${i.note?`　${esc(i.note)}`:''}，當日暫停門診</div>`}).join('')}</div>`;
+    return `<div><b>${md}${spName(i.special)}</b>${i.note?`　${esc(i.note)}`:''}，當日暫停門診</div>`};
+  const spRed=specials.filter(x=>x[1].special!=='course'),spGray=specials.filter(x=>x[1].special==='course');
+  if(spRed.length) h+=`<div class="banner">${spRed.map(spLine).join('')}</div>`;
+  if(spGray.length) h+=`<div class="banner gray">${spGray.map(spLine).join('')}</div>`;
   h+=`<div class="bar">
    ${act.length>1?`<div class="frow"><span class="lab">地點</span><button class="chip" data-f="clinic" data-v="all" aria-pressed="${ui.clinic==='all'}">全部</button>${act.map(c=>`<button class="chip" data-f="clinic" data-v="${c.id}" aria-pressed="${ui.clinic===c.id}"><span class="dot" style="background:${esc(c.color)}"></span>${esc(c.name)}</button>`).join('')}</div>`:''}
    <div class="frow"><span class="lab">時段</span>${[['all','全部'],...S.map(s=>[s,SL[s]])].map(([v,l])=>`<button class="chip" data-f="sess" data-v="${v}" aria-pressed="${ui.sess===v}">${l}</button>`).join('')}</div>
@@ -437,43 +444,40 @@ async function makeImage(st,ym){
   const SA={am:'早',pm:'午',ev:'晚'};
   const act=activeClinics(st,ym);
   x.fillStyle='#F4F6F8';x.fillRect(0,0,W,H);
-  x.fillStyle='#66707E';x.font=F(500,22);x.fillText(st.subtitle||'',P+4,P+22);
-  x.fillStyle='#1C2430';x.font=F(600,50,'serif');x.fillText(`${st.doctor}  ${+ym.slice(5)}月門診`,P+4,P+80);
-  x.fillStyle='#2F5D62';x.font=F(500,24);x.textAlign='right';x.fillText(ym.slice(0,4),W-P-4,P+80);x.textAlign='left';
   const n=daysIn(ym),lead=(wdOf(`${ym}-01`)+6)%7,rows=Math.ceil((lead+n)/7);
-  const ncol=Math.min(3,act.length)||1,lrows=Math.ceil(act.length/ncol)||1;
-  const legendH=40+lrows*128;
+  const hasH=c=>(c.mode==='split'||!c.mode)&&S.some(s=>c.hours?.[s]);
+  const withH=act.filter(hasH),noH=act.filter(c=>!hasH(c));
+  const legendH=34+withH.length*34+(noH.length?34:0)+8;
   let maxSlots=1;const infos=[];for(let d=1;d<=n;d++){const i=dayInfo(st,ym,`${ym}-${pad(d)}`);infos.push(i);maxSlots=Math.max(maxSlots,i.slots.length)}
-  const gx=P,gy=P+104,cw=(W-2*P)/7,hh=34,ch=Math.min(200,(H-gy-hh-legendH-56)/rows);
-  WDO.forEach((w,i)=>{x.fillStyle=(w===0||w===6)?'#B4552D':'#66707E';x.font=F(700,22);x.textAlign='center';x.fillText(WDL[w],gx+cw*i+cw/2,gy+24)});x.textAlign='left';
-  const top0=30,avail=ch-4-top0-8,sh=Math.min(46,avail/maxSlots-5);
+  const lines=withH.length+(noH.length?1:0),legSpan=40+44+Math.max(0,lines-1)*40+66+8;
+  const gx=P,gy=P+128,cw=(W-2*P)/7,hh=40,ch=Math.min(cw*1.06,(H-P-gy-hh-legSpan)/rows);
+  const shift=Math.max(0,(H-P-(gy+hh+rows*ch+legSpan))/2);x.translate(0,shift);
+  x.fillStyle='#66707E';x.font=F(500,26);x.fillText(st.subtitle||'',P+4,P+26);
+  x.fillStyle='#1C2430';x.font=F(600,60,'serif');x.fillText(`${st.doctor}  ${+ym.slice(5)}月門診`,P+4,P+96);
+  x.fillStyle='#2F5D62';x.font=F(500,28);x.textAlign='right';x.fillText(ym.slice(0,4),W-P-4,P+96);x.textAlign='left';
+  WDO.forEach((w,i)=>{x.fillStyle=(w===0||w===6)?'#B4552D':'#66707E';x.font=F(700,24);x.textAlign='center';x.fillText(WDL[w],gx+cw*i+cw/2,gy+27)});x.textAlign='left';
+  const top0=30,avail=ch-4-top0-8,sh=Math.min(54,avail/maxSlots-5);
   for(let d=1;d<=n;d++){const k=lead+d-1,cx=gx+(k%7)*cw,cy=gy+hh+Math.floor(k/7)*ch,i=infos[d-1];
     x.fillStyle='#FFFFFF';rr(cx+2,cy+2,cw-4,ch-4,10);x.fill();
     x.fillStyle='#66707E';x.font=F(700,21);x.fillText(String(d),cx+10,cy+24);
     const top=cy+top0;
-    if(i.special==='course'||i.special==='off'){x.fillStyle='#FCE9ED';rr(cx+7,top,cw-14,avail,8);x.fill();x.fillStyle='#A3243B';x.font=F(700,32);x.textAlign='center';x.fillText(spName(i.special),cx+cw/2,top+avail/2+12);x.textAlign='left';continue}
+    if(i.special==='course'||i.special==='off'){const cs=i.special==='course';x.fillStyle=cs?'#EEF0F2':'#FCE9ED';rr(cx+7,top,cw-14,avail,8);x.fill();x.fillStyle=cs?'#6B7480':'#A3243B';x.font=F(700,32);x.textAlign='center';x.fillText(spName(i.special),cx+cw/2,top+avail/2+12);x.textAlign='left';continue}
     if(i.special==='custom'&&dayDiff(st,ym,`${ym}-${pad(d)}`,i).items.length){x.fillStyle='#A3243B';x.font=F(700,16);x.textAlign='right';x.fillText('門診調整',cx+cw-10,cy+23);x.textAlign='left'}
     const dfi=i.special==='custom'?dayDiff(st,ym,`${ym}-${pad(d)}`,i):null,chs=dfi?dfi.changed:new Set();
     if(dfi&&dfi.items.length){x.strokeStyle='#A3243B';x.lineWidth=3;rr(cx+3.5,cy+3.5,cw-7,ch-7,10);x.stroke()}
     i.slots.forEach((s,j)=>{const c=clinicOf(st,s.c),y=top+j*(sh+5),col=slotColors(c,s.t),cg=chs.has(j),ink=col.light?col.fg:c.color;
       if(cg){x.fillStyle='#FFFFFF';rr(cx+8.5,y+1.5,cw-17,sh-3,7);x.fill();x.strokeStyle=ink;x.lineWidth=3;x.stroke()}else{x.fillStyle=col.bg;rr(cx+7,y,cw-14,sh,7);x.fill()}
-      const full=s.s==='full',tmS=timeOf(c,s.s,s),lab=full||cg?shortTime(tmS):SA[s.s];
-      x.fillStyle=cg?ink:col.fg;x.font=F(700,Math.round(sh*(full||cg?.44:.54)));x.fillText(`${lab} ${c.short||c.name}`,cx+14,y+sh*.68,cw-(s.t==='nhi'?50:28));
-      if(s.t==='nhi'){x.font=F(700,Math.round(sh*.42));x.textAlign='right';x.fillText('健',cx+cw-13,y+sh*.66);x.textAlign='left'}});
+      const full=s.s==='full',tmS=timeOf(c,s.s,s),lab=full||cg?igTime(tmS):SA[s.s];
+      x.fillStyle=cg?ink:col.fg;const txt=`${lab} ${c.short||c.name}`,mw=cw-(s.t==='nhi'?50:28);let fz=Math.round(sh*.5);x.font=F(700,fz);while(fz>13&&x.measureText(txt).width>mw){fz--;x.font=F(700,fz)}x.fillText(txt,cx+14,y+sh/2+fz*.36);
+      if(s.t==='nhi'){x.font=F(700,Math.min(22,Math.round(sh*.42)));x.textAlign='right';x.fillText('健',cx+cw-13,y+sh/2+7);x.textAlign='left'}});
   }
-  let ly=gy+hh+rows*ch+30;
-  x.fillStyle='#66707E';x.font=F(400,20);x.fillText('早＝上午　午＝下午　晚＝晚上　健＝健保（淺色）　紅框白底＝當日調整後時段',P+4,ly);ly+=40;
-  const colW=(W-2*P)/ncol;
-  act.forEach((c,ci)=>{const lx=P+4+(ci%ncol)*colW,y0=ly+Math.floor(ci/ncol)*128;
-    x.fillStyle=c.color;x.beginPath();x.arc(lx+9,y0-8,9,0,7);x.fill();
-    if(c.kind==='mixed'){x.fillStyle=slotColors(c,'nhi').bg;x.beginPath();x.arc(lx+30,y0-8,9,0,7);x.fill()}
-    const nx=lx+(c.kind==='mixed'?46:26);
-    x.fillStyle='#1C2430';x.font=F(700,23);x.fillText(c.name,nx,y0,colW-(nx-lx)-8);
-    x.fillStyle='#66707E';x.font=F(400,18);let yy=y0+27;
-    const hs=c.mode==='range'?[]:S.filter(s=>c.hours?.[s]).map(s=>`${SA[s]} ${c.hours[s]}`);
-    const hl=[];for(let q=0;q<hs.length;q+=2)hl.push(hs.slice(q,q+2).join('　'));
-    [c.phone,c.address,...hl].filter(Boolean).forEach(t=>{x.fillText(t,lx+26,yy,colW-34);yy+=23});});
-  x.fillStyle='#8A929C';x.font=F(400,19);x.fillText(st.footnote||'',P+4,H-28,W-2*P);
+  let ly=gy+hh+rows*ch+40;
+  x.fillStyle='#66707E';x.font=F(400,22);x.fillText('早＝上午　午＝下午　晚＝晚上　.5＝30分　健＝健保（淺色）　紅框白底＝當日調整後時段',P+4,ly,W-2*P);ly+=44;
+  const dots=(c,lx,y)=>{x.fillStyle=c.color;x.beginPath();x.arc(lx+9,y-8,9,0,7);x.fill();if(c.kind==='mixed'){x.fillStyle=slotColors(c,'nhi').bg;x.beginPath();x.arc(lx+30,y-8,9,0,7);x.fill();return lx+46}return lx+26};
+  withH.forEach(c=>{const nx=dots(c,P+4,ly);x.fillStyle='#1C2430';x.font=F(700,26);x.fillText(c.name,nx,ly,460);const nw=Math.min(460,x.measureText(c.name).width);
+    x.fillStyle='#4A5360';x.font=F(500,24);x.fillText(S.filter(s=>c.hours?.[s]).map(s=>`${SA[s]} ${igTime(c.hours[s])||c.hours[s]}`).join('　'),nx+nw+20,ly,W-P-(nx+nw+20));ly+=40});
+  if(noH.length){let lx=P+4;noH.forEach(c=>{x.font=F(700,26);const w=x.measureText(c.name).width;const nx=dots(c,lx,ly);x.fillStyle='#1C2430';x.fillText(c.name,nx,ly,W-P-nx);lx=nx+w+26});}
+  x.fillStyle='#8A929C';x.font=F(400,21);x.fillText(st.footnote||'',P+4,(noH.length?ly:ly-40)+66,W-2*P);x.setTransform(1,0,0,1,0,0);
   return cv;
 }
 async function showImage(){
