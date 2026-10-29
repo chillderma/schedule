@@ -352,6 +352,13 @@
      "mode": "course",
      "note": ""
     },
+    "2026-11-21": {
+     "mode": "off",
+     "note": "",
+     "only": [
+      "pm|a"
+     ]
+    },
     "2026-11-26": {
      "mode": "extra",
      "note": "",
