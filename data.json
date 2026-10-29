@@ -28,7 +28,7 @@
    "id": "b",
    "name": "雅文新莊診所",
    "short": "新莊雅文",
-   "color": "#B8577A",
+   "color": "#4fb58e",
    "kind": "aes",
    "mode": "range",
    "address": "新北市新莊區昌平街37號",
@@ -46,8 +46,8 @@
   {
    "id": "c",
    "name": "漫雲思境 MUSÉE du NUAGE",
-   "short": "漫雲思境",
-   "color": "#B07F22",
+   "short": "漫雲",
+   "color": "#b8577a",
    "kind": "aes",
    "mode": "range",
    "address": "台北市大安區瑞安街61巷1弄5號",
@@ -66,12 +66,29 @@
    "id": "cmvt6tjvr",
    "name": "妍洵美學診所",
    "short": "妍洵",
-   "color": "#4E8A6A",
+   "color": "#257a1a",
    "kind": "aes",
    "mode": "adhoc",
    "address": "桃園市大園區領航北路三段223號1樓",
-   "phone": "03-3811327",
+   "phone": "03-381-1327",
    "link": "",
+   "hours": {
+    "am": "",
+    "pm": "",
+    "ev": ""
+   },
+   "ranges": []
+  },
+  {
+   "id": "cmvtmyl2t",
+   "name": "Flos 曜診所",
+   "short": "曜診所",
+   "color": "#5e1ba1",
+   "kind": "aes",
+   "mode": "adhoc",
+   "address": "台北市大安區大安路一段73號5樓",
+   "phone": "02-2721-1201",
+   "link": "https://lin.ee/6saLoKM",
    "hours": {
     "am": "",
     "pm": "",
@@ -248,8 +265,59 @@
    }
   },
   "2026-11": {
-   "weekly": {},
-   "days": {}
+   "weekly": {
+    "1-am": {
+     "c": "a",
+     "t": "nhi"
+    },
+    "2-am": {
+     "c": "a",
+     "t": "nhi"
+    },
+    "3-full": {
+     "c": "c",
+     "t": "aes",
+     "tm": "12:00-16:00"
+    },
+    "2-full": {
+     "c": "b",
+     "t": "aes",
+     "tm": "13:00-20:00"
+    },
+    "4-ev": {
+     "c": "a",
+     "t": "nhi"
+    },
+    "5-am": {
+     "c": "a",
+     "t": "nhi"
+    },
+    "6-pm": {
+     "c": "a",
+     "t": "nhi"
+    },
+    "6-ev": {
+     "c": "a",
+     "t": "nhi"
+    }
+   },
+   "days": {
+    "2026-11-02": {
+     "mode": "extra",
+     "note": "",
+     "extra": [
+      {
+       "c": "a",
+       "t": "nhi",
+       "s": "pm"
+      }
+     ]
+    },
+    "2026-11-08": {
+     "mode": "course",
+     "note": ""
+    }
+   }
   }
  }
 }
