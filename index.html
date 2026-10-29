@@ -136,6 +136,8 @@ button{cursor:pointer}
 .banner.gray{background:var(--off-soft);color:var(--gray-ink)}
 .tag.course{background:var(--off-soft);color:var(--gray-ink)}
 .md .st.course{background:var(--off-soft);color:var(--gray-ink)}
+.slot.offs{background:var(--alert-soft);color:var(--alert);font-weight:700}
+.tag.off.small{font-size:13px;padding:1px 8px}
 .editbtn{border:1px solid var(--accent);color:var(--accent);background:var(--surface);border-radius:999px;padding:6px 14px;font-size:14px}
 /* editor */
 .ed{position:fixed;inset:0;background:var(--bg);overflow:auto;z-index:20;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -230,6 +232,9 @@ function extraSlots(st,ov){const out=[];(ov.extra||[]).forEach(v=>{const c=clini
 function dayInfo(st,ym,ds){
   const mo=st.months[ym]; if(!mo) return {slots:[]};
   const ov=(mo.days||{})[ds];
+  if(ov&&ov.mode==='off'&&ov.only&&ov.only.length){const base=dayInfo({...st,months:{[ym]:{...mo,days:{}}}},ym,ds).slots;const k=x=>`${x.s}|${x.c}`;
+    const closed=base.filter(x=>ov.only.includes(k(x))),rest=base.filter(x=>!ov.only.includes(k(x)));
+    if(closed.length&&rest.length)return {special:'partoff',note:ov.note||'',slots:rest,closed}}
   if(ov&&(ov.mode==='off'||ov.mode==='course')) return {special:ov.mode,note:ov.note||'',slots:[]};
   const src=ov&&ov.mode==='custom'?(ov.slots||{}):null; const wd=wdOf(ds);
   const slots=[...S,'full'].map(s=>{const v=src?src[s]:(mo.weekly||{})[`${wd}-${s}`];const c=v&&clinicOf(st,v.c);return validSlot(c,s)?{s,c:v.c,t:typeOf(c,v),tm:v.tm||(s==='full'?(rangesOf(c)[0]||''):undefined)}:null}).filter(Boolean);
@@ -287,6 +292,7 @@ function render(){
   if(mk.length>1) h+=`<div class="mseg" role="tablist" aria-label="月份">${mk.map(k=>`<button class="mbtn" data-m="${k}" aria-pressed="${k===ym}"><b>${+k.slice(5)} 月門診</b><small>${k===curYM?'本月':k>curYM&&mk.includes(curYM)?'新公布':''}</small></button>`).join('')}</div>`;
   const spLine=([d,i,ds])=>{const md=`${+ym.slice(5)}/${d}（${WDL[wdOf(ds)]}）`;
     if(i.special==='custom')return `<div><b>${md}門診調整</b>　${diffHTML(st,dayDiff(st,ym,ds,i).items)}${i.note?`　${esc(i.note)}`:''}</div>`;
+    if(i.special==='partoff')return `<div><b>${md}休診</b>　${i.closed.map(x=>{const c=clinicOf(st,x.c);return `${sessLabel(st,x)} ${esc(c.short||c.name)} ${esc(timeOf(c,x.s,x))}`}).join('、')} 休診，其他時段照常${i.note?`　${esc(i.note)}`:''}</div>`;
     return `<div><b>${md}${spName(i.special)}</b>${i.note?`　${esc(i.note)}`:''}，當日暫停門診</div>`};
   const spRed=specials.filter(x=>x[1].special!=='course'),spGray=specials.filter(x=>x[1].special==='course');
   if(spRed.length) h+=`<div class="banner">${spRed.map(spLine).join('')}</div>`;
@@ -318,11 +324,11 @@ function calHTML(st,ym){
     const sl=i.slots.map((x,k)=>({x,k})).filter(o=>pass(o.x));
     const cls=(ds===todayStr?' today':'')+(ds<todayStr?' past':'')+(cust?' adjcell':'');
     const sp=i.special==='course'||i.special==='off';
-    g+=`<div class="cell${cls}"><span class="n">${d}</span>${sp?`<span class="tag ${i.special}">${spName(i.special)}</span>`:''}${cust?`<span class="tag adjtag">門診調整</span>`:''}${sl.map(o=>slotChip(st,o.x,cust&&df.changed.has(o.k))).join('')}</div>`;
+    g+=`<div class="cell${cls}"><span class="n">${d}</span>${sp?`<span class="tag ${i.special}">${spName(i.special)}</span>`:''}${cust?`<span class="tag adjtag">門診調整</span>`:''}${i.special==='partoff'?[...sl.map(o=>({x:o.x,h:slotChip(st,o.x,false)})),...i.closed.filter(pass).map(x=>({x,h:`<div class="slot offs"><span class="s">${x.s==='full'?esc(shortTime(timeOf(clinicOf(st,x.c),x.s,x))):SL[x.s]}</span>休診</div>`}))].sort((a,b)=>startMin(st,a.x)-startMin(st,b.x)).map(o=>o.h).join(''):sl.map(o=>slotChip(st,o.x,cust&&df.changed.has(o.k))).join('')}</div>`;
     if(sl.length){ if(sl.length) any=true;
       list+=`<div class="day${cls}"><div class="dt">${+ym.slice(5)}/${d}<small>週${WDL[wdOf(ds)]}</small></div><div class="ss">${
         sp?`<span class="tag ${i.special}" style="align-self:flex-start">${spName(i.special)}・暫停門診${i.note?'・'+esc(i.note):''}</span>`:
-        (cust?`<span class="tag adjtag" style="align-self:flex-start">門診調整</span>`:'')+
+        (cust?`<span class="tag adjtag" style="align-self:flex-start">門診調整</span>`:'')+(i.special==='partoff'?`<span class="tag off small" style="align-self:flex-start">${i.closed.map(x=>sessLabel(st,x)).join('、')} 休診</span>`:'')+
         sl.map(o=>{const x=o.x,c=clinicOf(st,x.c),ch=cust&&df.changed.has(o.k);return `<div class="lslot${ch?' chgd':''}"><span class="dot" style="background:${slotColors(c,x.t).bg}"></span><b>${sessLabel(st,x)}</b><span class="t">${esc(timeOf(c,x.s,x))}</span>${esc(c.name)}<span class="k">${TL[x.t]}</span>${ch?'<span class="k new">調整後</span>':''}</div>`}).join('')
       }${cust?`<span class="hint">${diffHTML(st,df.items)}${i.note?'　'+esc(i.note):''}</span>`:''}</div></div>`}
   }
@@ -338,7 +344,9 @@ function cardsHTML(st,ym,act){
     const chg=[];Object.keys(mo.days||{}).sort().forEach(ds=>{const ov=mo.days[ds],wd=wdOf(ds);
       const had=[...S,'full'].some(s=>mo.weekly[`${wd}-${s}`]?.c===c.id);
       const md=`${+ds.slice(5,7)}/${+ds.slice(8)}（${WDL[wd]}）`;
-      if((ov.mode==='off'||ov.mode==='course')&&had) chg.push(`<div><b>${md}</b> ${spName(ov.mode)}${ov.note?'・'+esc(ov.note):''}</div>`);
+      const pi=ov.mode==='off'&&ov.only&&ov.only.length?dayInfo(st,ym,ds):null;
+      if(pi&&pi.special==='partoff'){const cl=pi.closed.filter(x=>x.c===c.id);if(cl.length)chg.push(`<div><b>${md}</b> ${cl.map(x=>sessLabel(st,x)).join('、')} 休診${ov.note?'・'+esc(ov.note):''}</div>`)}
+      else if((ov.mode==='off'||ov.mode==='course')&&had) chg.push(`<div><b>${md}</b> ${spName(ov.mode)}${ov.note?'・'+esc(ov.note):''}</div>`);
       else if(ov.mode==='custom'){const i=dayInfo(st,ym,ds);const its=dayDiff(st,ym,ds,i).items.filter(it=>(it.b&&it.b.c===c.id)||(it.n&&it.n.c===c.id));
         if(its.length)chg.push(`<div><b>${md}</b> ${diffHTML(st,its)}${ov.note?'　'+esc(ov.note):''}</div>`)}
     });
@@ -395,7 +403,7 @@ function weekPanel(d){const mo=d.months[ed.month],C=cols(d);
 function daysPanel(d){const ym=ed.month, mo=d.months[ym], n=daysIn(ym), lead=(wdOf(`${ym}-01`)+6)%7;
   let g=`<div class="mcal">${WDO.map(w=>`<div class="h">${WDL[w]}</div>`).join('')}`;for(let i=0;i<lead;i++)g+=`<div></div>`;
   for(let x=1;x<=n;x++){const ds=`${ym}-${pad(x)}`,i=dayInfo(d,ym,ds),ov=mo.days[ds];
-    g+=`<button class="md ${ed.day===ds?'sel':''}" data-day="${ds}"><span>${x}</span>${ov?`<span class="st ${ov.mode}">${{off:'休診',course:'進修',custom:'調整',extra:'加排'}[ov.mode]}</span>`:''}<span class="dots">${i.slots.map(s=>`<i style="background:${slotColors(clinicOf(d,s.c),s.t).bg}"></i>`).join('')}</span></button>`}
+    g+=`<button class="md ${ed.day===ds?'sel':''}" data-day="${ds}"><span>${x}</span>${ov?`<span class="st ${ov.mode}">${ov.mode==='off'&&ov.only&&ov.only.length?'部分休診':{off:'休診',course:'進修',custom:'調整',extra:'加排'}[ov.mode]}</span>`:''}<span class="dots">${i.slots.map(s=>`<i style="background:${slotColors(clinicOf(d,s.c),s.t).bg}"></i>`).join('')}</span></button>`}
   g+=`</div>`;
   let f='';
   if(ed.day){const ov=mo.days[ed.day]||{mode:'normal'};const md=`${+ed.day.slice(5,7)}/${+ed.day.slice(8)}（週${WDL[wdOf(ed.day)]}）`;
@@ -404,10 +412,11 @@ function daysPanel(d){const ym=ed.month, mo=d.months[ym], n=daysIn(ym), lead=(wd
     f=`<div class="panel" style="background:var(--bg)"><h3>${md}</h3>
     <div class="seg">${[['normal','照常'],['off','休診'],['course','進修'],['custom','調整時段／換診所'],['extra','其他（加排）']].map(([m,l])=>`<button class="chip" data-mode="${m}" aria-pressed="${(ov.mode||'normal')===m}">${l}</button>`).join('')}</div>
     ${ov.mode==='custom'?`<p class="hint">選診所後，可在下方改這天的時間（空白＝原本時間）。</p><div class="form">${cols(d).map(s=>{const v=cs[s],c=v&&clinicOf(d,v.c);return `<div class="fld"><label for="cs-${s}">${SL[s]}</label><select id="cs-${s}" data-cs="${s}">${slotOptions(d,s,v)}</select>${c?`<input data-ct="${s}" value="${esc(v.tm||'')}" placeholder="原時間 ${esc(timeOf(c,s,{}))}" aria-label="${SL[s]}這天的時間">`:''}</div>`}).join('')}</div>`:''}
+    ${ov.mode==='off'&&base.slots.length?`<p class="hint">要休哪些診次？都不勾＝整天休診。</p><div class="seg">${base.slots.map(x=>{const c=clinicOf(d,x.c),k=`${x.s}|${x.c}`;return `<label class="chip"><input type="checkbox" data-oc="${esc(k)}" ${(ov.only||[]).includes(k)?'checked':''}> ${sessLabel(d,x)} ${esc(c.short||c.name)} ${esc(timeOf(c,x.s,x))}</label>`}).join('')}</div>`:''}
     ${ov.mode==='extra'?`<p class="hint">這天原本的門診照常保留，這裡是另外加診。有固定時段的診所直接從選單選時段；不固定的診所自己填時間。客人看到的和平常一樣，用該診所的代表色顯示，不會標示調整。</p>${(ov.extra||[]).map((v,j)=>`<div class="xrow"><select data-xc="${j}" aria-label="診所">${xOptions(d,v)}</select>${xTimeCtl(d,v,j)}<button class="btn danger" data-xdel="${j}">刪除</button></div>`).join('')}<button class="btn" id="xAdd" style="align-self:flex-start">＋再加一筆</button>`:''}
     ${ov.mode&&ov.mode!=='normal'&&ov.mode!=='extra'?`<label class="fld">備註（會顯示給客人）<input id="dNote" value="${esc(ov.note||'')}" placeholder="${ov.mode==='course'?'例：雷射進修課程':'例：改至 A館'}"></label>`:''}
     </div>`}
-  const lst=Object.keys(mo.days).sort().map(ds=>{const o=mo.days[ds];const ex=o.mode==='extra'?' '+(o.extra||[]).map(v=>{const c=clinicOf(d,v.c);if(!c)return '';const x=v.s&&v.s!=='full'?{s:v.s}:{s:'full',tm:v.tm};return `${esc(c.short||c.name)} ${esc(timeOf(c,x.s,x)||'（未填時間）')}`}).join('、'):'';return `<div>${+ds.slice(5,7)}/${+ds.slice(8)} ${({off:'休診',course:'進修',custom:'調整',extra:'加排'})[o.mode]}${ex}${o.note?'・'+esc(o.note):''}</div>`}).join('');
+  const lst=Object.keys(mo.days).sort().map(ds=>{const o=mo.days[ds];const ex=o.mode==='extra'?' '+(o.extra||[]).map(v=>{const c=clinicOf(d,v.c);if(!c)return '';const x=v.s&&v.s!=='full'?{s:v.s}:{s:'full',tm:v.tm};return `${esc(c.short||c.name)} ${esc(timeOf(c,x.s,x)||'（未填時間）')}`}).join('、'):'';const po=o.mode==='off'&&o.only&&o.only.length?' '+o.only.map(k=>{const [ss,cc]=k.split('|');const c=clinicOf(d,cc);return `${SL[ss]||'整段'} ${c?esc(c.short||c.name):''}`}).join('、'):'';return `<div>${+ds.slice(5,7)}/${+ds.slice(8)} ${({off:'休診',course:'進修',custom:'調整',extra:'加排'})[o.mode]}${po}${ex}${o.note?'・'+esc(o.note):''}</div>`}).join('');
   return `<section class="panel"><h3>${ymLabel(ym)}・特殊日期</h3><p class="hint">點日期，設定休診、進修、臨時換診所，或用「其他（加排）」另外加診（任何診所都可以）。圓點是當天的門診。</p>${g}${f}${lst?`<div class="chg">本月異動${lst}</div>`:''}</section>`}
 function clinicPanel(d){
   const act=new Set(activeClinics(d,ed.month).map(c=>c.id));
@@ -444,14 +453,16 @@ async function makeImage(st,ym){
   const SA={am:'早',pm:'午',ev:'晚'};
   const act=activeClinics(st,ym);
   x.fillStyle='#F4F6F8';x.fillRect(0,0,W,H);
+  const BX={l:P,r:W-P,t:P+128,b:H-P},BW=BX.r-BX.l;
   const n=daysIn(ym),lead=(wdOf(`${ym}-01`)+6)%7,rows=Math.ceil((lead+n)/7);
   const hasH=c=>(c.mode==='split'||!c.mode)&&S.some(s=>c.hours?.[s]);
   const withH=act.filter(hasH),noH=act.filter(c=>!hasH(c));
   const legendH=34+withH.length*34+(noH.length?34:0)+8;
-  let maxSlots=1;const infos=[];for(let d=1;d<=n;d++){const i=dayInfo(st,ym,`${ym}-${pad(d)}`);infos.push(i);maxSlots=Math.max(maxSlots,i.slots.length)}
+  let maxSlots=1;const infos=[];for(let d=1;d<=n;d++){const i=dayInfo(st,ym,`${ym}-${pad(d)}`);infos.push(i);maxSlots=Math.max(maxSlots,i.slots.length+(i.closed?i.closed.length:0))}
   const lines=withH.length+(noH.length?1:0),legSpan=40+44+Math.max(0,lines-1)*40+66+8;
-  const gx=P,gy=P+128,cw=(W-2*P)/7,hh=40,ch=Math.min(cw*1.06,(H-P-gy-hh-legSpan)/rows);
-  const shift=Math.max(0,(H-P-(gy+hh+rows*ch+legSpan))/2);x.translate(0,shift);
+  const gx=BX.l,gy=BX.t,cw=BW/7,hh=40,ch=Math.min(cw*1.06,(BX.b-gy-hh-legSpan)/rows);
+  const shift=Math.max(0,(BX.b-(gy+hh+rows*ch+legSpan))/2);
+  x.translate(0,shift);
   x.fillStyle='#66707E';x.font=F(500,26);x.fillText(st.subtitle||'',P+4,P+26);
   x.fillStyle='#1C2430';x.font=F(600,60,'serif');x.fillText(`${st.doctor}  ${+ym.slice(5)}月門診`,P+4,P+96);
   x.fillStyle='#2F5D62';x.font=F(500,28);x.textAlign='right';x.fillText(ym.slice(0,4),W-P-4,P+96);x.textAlign='left';
@@ -463,6 +474,10 @@ async function makeImage(st,ym){
     const top=cy+top0;
     if(i.special==='course'||i.special==='off'){const cs=i.special==='course';x.fillStyle=cs?'#EEF0F2':'#FCE9ED';rr(cx+7,top,cw-14,avail,8);x.fill();x.fillStyle=cs?'#6B7480':'#A3243B';x.font=F(700,32);x.textAlign='center';x.fillText(spName(i.special),cx+cw/2,top+avail/2+12);x.textAlign='left';continue}
     if(i.special==='custom'&&dayDiff(st,ym,`${ym}-${pad(d)}`,i).items.length){x.fillStyle='#A3243B';x.font=F(700,16);x.textAlign='right';x.fillText('門診調整',cx+cw-10,cy+23);x.textAlign='left'}
+    if(i.special==='partoff'){[...i.slots.map(s=>({s,cl:0})),...i.closed.map(s=>({s,cl:1}))].sort((a,b)=>startMin(st,a.s)-startMin(st,b.s)).forEach((o,j)=>{const s=o.s,c=clinicOf(st,s.c),y=top+j*(sh+5),col=o.cl?{bg:'#FCE9ED',fg:'#A3243B'}:slotColors(c,s.t);
+        x.fillStyle=col.bg;rr(cx+7,y,cw-14,sh,7);x.fill();const full=s.s==='full',lab=full?igTime(timeOf(c,s.s,s)):SA[s.s];const txt=o.cl?`${lab} 休診`:`${lab} ${c.short||c.name}`,mw=cw-(s.t==='nhi'&&!o.cl?50:28);
+        x.fillStyle=col.fg;let fz=o.cl?Math.min(22,Math.round(sh*.5)):Math.round(sh*.5);x.font=F(700,fz);while(fz>13&&x.measureText(txt).width>mw){fz--;x.font=F(700,fz)}x.fillText(txt,cx+14,y+sh/2+fz*.36);
+        if(s.t==='nhi'&&!o.cl){x.font=F(700,Math.min(22,Math.round(sh*.42)));x.textAlign='right';x.fillText('健',cx+cw-13,y+sh/2+7);x.textAlign='left'}});continue}
     const dfi=i.special==='custom'?dayDiff(st,ym,`${ym}-${pad(d)}`,i):null,chs=dfi?dfi.changed:new Set();
     if(dfi&&dfi.items.length){x.strokeStyle='#A3243B';x.lineWidth=3;rr(cx+3.5,cy+3.5,cw-7,ch-7,10);x.stroke()}
     i.slots.forEach((s,j)=>{const c=clinicOf(st,s.c),y=top+j*(sh+5),col=slotColors(c,s.t),cg=chs.has(j),ink=col.light?col.fg:c.color;
@@ -472,12 +487,12 @@ async function makeImage(st,ym){
       if(s.t==='nhi'){x.font=F(700,Math.min(22,Math.round(sh*.42)));x.textAlign='right';x.fillText('健',cx+cw-13,y+sh/2+7);x.textAlign='left'}});
   }
   let ly=gy+hh+rows*ch+40;
-  x.fillStyle='#66707E';x.font=F(400,22);x.fillText('早＝上午　午＝下午　晚＝晚上　.5＝30分　健＝健保（淺色）　紅框白底＝當日調整後時段',P+4,ly,W-2*P);ly+=44;
+  x.fillStyle='#66707E';x.font=F(400,22);x.fillText('早＝上午　午＝下午　晚＝晚上　.5＝30分　健＝健保（淺色）　紅框白底＝當日調整後時段',gx+4,ly,BW);ly+=44;
   const dots=(c,lx,y)=>{x.fillStyle=c.color;x.beginPath();x.arc(lx+9,y-8,9,0,7);x.fill();if(c.kind==='mixed'){x.fillStyle=slotColors(c,'nhi').bg;x.beginPath();x.arc(lx+30,y-8,9,0,7);x.fill();return lx+46}return lx+26};
-  withH.forEach(c=>{const nx=dots(c,P+4,ly);x.fillStyle='#1C2430';x.font=F(700,26);x.fillText(c.name,nx,ly,460);const nw=Math.min(460,x.measureText(c.name).width);
-    x.fillStyle='#4A5360';x.font=F(500,24);x.fillText(S.filter(s=>c.hours?.[s]).map(s=>`${SA[s]} ${igTime(c.hours[s])||c.hours[s]}`).join('　'),nx+nw+20,ly,W-P-(nx+nw+20));ly+=40});
-  if(noH.length){let lx=P+4;noH.forEach(c=>{x.font=F(700,26);const w=x.measureText(c.name).width;const nx=dots(c,lx,ly);x.fillStyle='#1C2430';x.fillText(c.name,nx,ly,W-P-nx);lx=nx+w+26});}
-  x.fillStyle='#8A929C';x.font=F(400,21);x.fillText(st.footnote||'',P+4,(noH.length?ly:ly-40)+66,W-2*P);x.setTransform(1,0,0,1,0,0);
+  withH.forEach(c=>{const nx=dots(c,gx+4,ly);x.fillStyle='#1C2430';x.font=F(700,26);x.fillText(c.name,nx,ly,460);const nw=Math.min(460,x.measureText(c.name).width);
+    x.fillStyle='#4A5360';x.font=F(500,24);x.fillText(S.filter(s=>c.hours?.[s]).map(s=>`${SA[s]} ${igTime(c.hours[s])||c.hours[s]}`).join('　'),nx+nw+20,ly,BX.r-(nx+nw+20));ly+=40});
+  if(noH.length){let lx=gx+4;noH.forEach(c=>{x.font=F(700,26);const w=x.measureText(c.name).width;const nx=dots(c,lx,ly);x.fillStyle='#1C2430';x.fillText(c.name,nx,ly,BX.r-nx);lx=nx+w+26});}
+  x.fillStyle='#8A929C';x.font=F(400,21);x.fillText(st.footnote||'',gx+4,(noH.length?ly:ly-40)+66,BW);x.setTransform(1,0,0,1,0,0);
   return cv;
 }
 async function showImage(){
@@ -545,6 +560,7 @@ document.addEventListener('change',e=>{if(!editing)return;const t=e.target,mo=dr
   if(t.id==='avFile'){const f=t.files&&t.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,360/Math.max(im.width,im.height));const cv=document.createElement('canvas');cv.width=Math.round(im.width*k);cv.height=Math.round(im.height*k);cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);draft.avatar=cv.toDataURL('image/webp',.88);saveDraft();render()};im.src=r.result};r.readAsDataURL(f);return}
   if(t.id==='edMonth'){ed.month=t.value;ed.day=null;ed.confirmDel=false}
   else if(t.dataset.wk){const v=parse(t.value);if(v)mo.weekly[t.dataset.wk]=v;else delete mo.weekly[t.dataset.wk]}
+  else if(t.dataset.oc){const o=mo.days[ed.day];o.only=o.only||[];const k=t.dataset.oc;if(t.checked){if(!o.only.includes(k))o.only.push(k)}else o.only=o.only.filter(z=>z!==k);if(!o.only.length)delete o.only}
   else if(t.dataset.xc!=null){const o=mo.days[ed.day],j=+t.dataset.xc;const [c,ty]=t.value.split('|');const cl=clinicOf(draft,c);const nv=newExtra(draft,cl);nv.t=ty;o.extra[j]=nv}
   else if(t.dataset.xs!=null){const v=mo.days[ed.day].extra[+t.dataset.xs],val=t.value;if(val==='other'){v.s='full';v.o=true;v.tm=''}else if(val.startsWith('r|')){v.s='full';v.tm=val.slice(2);delete v.o}else{v.s=val;delete v.tm;delete v.o}}
   else if(t.dataset.xt!=null){const v=mo.days[ed.day].extra[+t.dataset.xt];v.tm=t.value.trim();v.s='full'}
