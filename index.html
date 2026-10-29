@@ -488,16 +488,19 @@ async function showImage(){
 }
 
 /* ---------- publish ---------- */
+let saving=false;
 async function publish(){
+  if(saving) return;
   if(!GH.ok()) return openLogin();
+  saving=true;
   const st=clone(draft);delete st.sample;
   const b=$('#edPub')||$('#obSave');if(b){b.disabled=true;b.textContent='儲存中…'}
   try{await GH.save(st);try{localStorage.removeItem('clinic-draft')}catch(e){}
     state=clone(st);savedJSON=JSON.stringify(state);
-    toast('已儲存，客人頁面約 1 分鐘後更新');if(!editing)render();if(b){b.disabled=false;b.textContent='儲存'}}
-  catch(e){const c=e&&e.code;
+    toast('已儲存，客人頁面約 1 分鐘後更新');saving=false;if(!editing)render();if(b){b.disabled=false;b.textContent='儲存'}}
+  catch(e){const c=e&&e.code;saving=false;
     if(c==='conflict'){toast('有人剛更新過，將重新載入最新版');setTimeout(()=>location.reload(),1800);return}
-    toast(c==='auth'?'金鑰無效或已過期，請重新設定':c==='perm'?'這組金鑰沒有寫入權限':'儲存失敗，請檢查網路後再試');
+    toast(c==='auth'?'金鑰無效或已過期，請重新設定':c==='perm'?'這組金鑰沒有寫入權限':c==='rate'?'儲存太頻繁，請等 1 分鐘再按儲存':'儲存失敗，請檢查網路後再試'+(e&&e.detail?`（${e.detail}）`:''));
     if(c==='auth')GH.logout(true);
     if(b){b.disabled=false;b.textContent='儲存'}}
 }
@@ -572,7 +575,9 @@ const GH=(()=>{
   const api=(p,o={})=>{const r=repo();return fetch(`https://api.github.com/repos/${r.owner}/${r.repo}/contents/${r.path}`+(p||''),{...o,headers:{'Accept':'application/vnd.github+json','Authorization':'Bearer '+cfg.token,'X-GitHub-Api-Version':'2022-11-28',...(o.headers||{})}})};
   const b64e=str=>{const by=new TextEncoder().encode(str);let bin='';for(let i=0;i<by.length;i+=0x8000)bin+=String.fromCharCode.apply(null,by.subarray(i,i+0x8000));return btoa(bin)};
   const b64d=b=>new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\s/g,'')),c=>c.charCodeAt(0)));
-  const err=(code)=>Object.assign(new Error(code),{code});
+  const err=(code,detail)=>Object.assign(new Error(code),{code,detail});
+  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+  const remote=async()=>{const r=repo();const res=await api(`?ref=${encodeURIComponent(r.branch)}&t=${Date.now()}`,{cache:'no-store'});if(!res.ok)return null;const j=await res.json();return{sha:j.sha,text:b64d(j.content)}};
   return {
     repo, needRepo:()=>{const r=repo();return!(r.owner&&r.repo)},
     ok:()=>!!(cfg.token&&sha),
@@ -584,10 +589,24 @@ const GH=(()=>{
       const perm=await fetch(`https://api.github.com/repos/${r.owner}/${r.repo}`,{headers:{'Authorization':'Bearer '+cfg.token,'Accept':'application/vnd.github+json'}}).then(x=>x.ok?x.json():null).catch(()=>null);
       if(perm&&perm.permissions&&!perm.permissions.push)throw err('perm');
       return st},
-    async save(st){const r=repo();const body={message:`更新門診表 ${new Date().toLocaleString('zh-TW',{hour12:false})}`,content:b64e(JSON.stringify(st,null,1)+'\n'),sha,branch:r.branch};
-      const res=await api('',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-      if(res.status===409||res.status===422)throw err('conflict');if(res.status===401)throw err('auth');if(res.status===403||res.status===404)throw err('perm');if(!res.ok)throw err('net');
-      const j=await res.json();sha=j.content.sha},
+    async save(st){const r=repo();const text=JSON.stringify(st,null,1)+'\n';
+      const put=()=>api('',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:`更新門診表 ${new Date().toLocaleString('zh-TW',{hour12:false})}`,content:b64e(text),sha,branch:r.branch})}).catch(()=>null);
+      let res=await put();
+      for(let k=0;k<2&&(!res||res.status>=500||res.status===403||res.status===429);k++){
+        // 先確認是否其實已經存進去了（GitHub 偶爾已寫入但回傳錯誤）
+        await sleep(1500);const cur=await remote().catch(()=>null);if(cur&&cur.text===text){sha=cur.sha;return}
+        let msg='';try{msg=res?(await res.clone().json()).message||'':''}catch(e){}
+        if(res&&res.status===403&&!/rate limit|abuse/i.test(msg))break;
+        res=await put()}
+      if(res&&res.ok){const j=await res.json();sha=j.content.sha;return}
+      const cur=await remote().catch(()=>null);if(cur&&cur.text===text){sha=cur.sha;return}
+      let msg='';try{msg=res?(await res.json()).message||'':''}catch(e){}
+      if(!res)throw err('net');
+      if(res.status===401)throw err('auth');
+      if(res.status===429||/rate limit|abuse/i.test(msg))throw err('rate');
+      if(res.status===409||res.status===422)throw err('conflict');
+      if(res.status===403||res.status===404)throw err('perm',msg);
+      throw err('net',`${res.status} ${msg}`.trim())},
     logout(keepRepo){cfg=keepRepo?{owner:cfg.owner,repo:cfg.repo}:{};sha=null;try{localStorage.setItem(K,JSON.stringify(cfg))}catch(e){}}
   };
 })();
