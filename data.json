@@ -11,7 +11,7 @@
    "id": "a",
    "name": "中和雅文皮膚科診所",
    "short": "中和雅文",
-   "color": "#5D6D7E",
+   "color": "#e5bdc4",
    "kind": "mixed",
    "mode": "split",
    "address": "新北市中和區中山路三段129號",
@@ -28,7 +28,7 @@
    "id": "c",
    "name": "漫雲思境 MUSÉE du NUAGE",
    "short": "漫雲",
-   "color": "#9AA5B1",
+   "color": "#f94d6f",
    "kind": "aes",
    "mode": "range",
    "address": "台北市大安區瑞安街61巷1弄5號",
@@ -47,7 +47,7 @@
    "id": "cmvt6tjvr",
    "name": "妍洵美學診所",
    "short": "妍洵",
-   "color": "#7D8B74",
+   "color": "#c688e2",
    "kind": "aes",
    "mode": "adhoc",
    "address": "桃園市大園區領航北路三段223號1樓",
@@ -453,7 +453,7 @@
   }
  },
  "theme": {
-  "bg": "#F2F3F4",
-  "title": "#2B2F33"
+  "bg": "#F6EEEE",
+  "title": "#6E3F48"
  }
 }
